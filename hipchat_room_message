@@ -34,6 +34,7 @@ OPTIONS:
    -i <input>     Optional: Input to send to room (default: stdin)
    -l <level>     Nagios message level (critical, warning, unknown, ok, down, up). Will override color.
    -n             Trigger notification for people in the room
+   -k             Allow insecure SSL connections
    -o             API host (api.hipchat.com)
    -v <version>   API version (default: v1)
 EOF
@@ -49,6 +50,7 @@ COLOR=${HIPCHAT_COLOR:-yellow}
 FORMAT=${HIPCHAT_FORMAT:-html}
 MESSAGE=${HIPCHAT_MESSAGE:-html}
 NOTIFY=${HIPCHAT_NOTIFY:-0}
+INSECURE=${HIPCHAT_INSECURE:-0}
 HOST=${HIPCHAT_HOST:-api.hipchat.com}
 LEVEL=${HIPCHAT_LEVEL:-}
 API=${HIPCHAT_API:-v1}
@@ -61,6 +63,7 @@ while getopts “ht:r:f:c:m:o:i:l:v:n” OPTION; do
     c) COLOR=$OPTARG;;
     m) FORMAT=$OPTARG;;
     n) NOTIFY=1;;
+    k) INSECURE=1;;
     i) INPUT=$OPTARG;;
     l) LEVEL=$OPTARG;;
     o) HOST=$OPTARG;;
@@ -119,14 +122,23 @@ if [ $API == 'v2' ]; then
   fi
 fi
 
+# insecure ssl connections
+if [ $INSECURE -ne 0 ]; then
+  INSECURE='--insecure'
+else
+  INSECURE=''
+fi
+
 # do the curl
 if [ $API == 'v2' ]; then
   curl -sS \
     -H 'Content-type: application/json' \
     -d "{\"color\":\"$COLOR\", \"message\":\"$INPUT\", \"message_format\":\"$FORMAT\", \"notify\":$NOTIFY}" \
+    $INSECURE \
     https://$HOST/v2/room/$ROOM_ID/notification?auth_token=$TOKEN
 else
   curl -sS \
     -d "auth_token=$TOKEN&room_id=$ROOM_ID&from=$FROM&color=$COLOR&message_format=$FORMAT&message=$INPUT&notify=$NOTIFY" \
+    $INSECURE \
     https://$HOST/v1/rooms/message
 fi
